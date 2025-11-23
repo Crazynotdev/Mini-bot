@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - CRAZY-MD SaaS Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Navigation -->
+    <nav class="bg-blue-900 text-white shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-robot text-2xl"></i>
+                    <h1 class="text-xl font-bold">CRAZY-MD SaaS Pro</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="adminName" class="font-semibold"></span>
+                    <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Statistiques globales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-blue-100 rounded-lg">
+                        <i class="fas fa-users text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Utilisateurs Actifs</h3>
+                        <p id="activeUsers" class="text-2xl font-bold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-green-100 rounded-lg">
+                        <i class="fas fa-robot text-green-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Bots Connectés</h3>
+                        <p id="connectedBots" class="text-2xl font-bold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-purple-100 rounded-lg">
+                        <i class="fas fa-comments text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Messages Aujourd'hui</h3>
+                        <p id="todayMessages" class="text-2xl font-bold text-gray-900">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center">
+                    <div class="p-3 bg-yellow-100 rounded-lg">
+                        <i class="fas fa-chart-line text-yellow-600 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-sm font-medium text-gray-500">Revenu Mensuel</h3>
+                        <p id="monthlyRevenue" class="text-2xl font-bold text-gray-900">€0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graphiques et données -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Graphique connexions -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">📈 Activité des Bots</h3>
+                <canvas id="activityChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Utilisateurs récents -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold mb-4">👥 Utilisateurs Récents</h3>
+                <div id="recentUsers" class="space-y-3">
+                    <!-- Liste des utilisateurs -->
+                </div>
+            </div>
+
+            <!-- Sessions actives -->
+            <div class="bg-white rounded-lg shadow-lg p-6 lg:col-span-2">
+                <h3 class="text-lg font-semibold mb-4">🔗 Sessions Actives</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Utilisateur</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uptime</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Messages</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTable" class="bg-white divide-y divide-gray-200">
+                            <!-- Données des sessions -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let activityChart;
+
+        // Charger les données du dashboard
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/admin/stats');
+                const data = await response.json();
+
+                // Mettre à jour les statistiques
+                document.getElementById('activeUsers').textContent = data.totalUsers;
+                document.getElementById('connectedBots').textContent = data.connectedBots;
+                document.getElementById('todayMessages').textContent = data.todayMessages;
+                document.getElementById('monthlyRevenue').textContent = `€${data.monthlyRevenue}`;
+
+                // Mettre à jour le graphique
+                updateActivityChart(data.activityData);
+                updateRecentUsers(data.recentUsers);
+                updateSessionsTable(data.activeSessions);
+
+            } catch (error) {
+                console.error('Erreur chargement dashboard:', error);
+            }
+        }
+
+        function updateActivityChart(activityData) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            if (activityChart) {
+                activityChart.destroy();
+            }
+
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: activityData.labels,
+                    datasets: [{
+                        label: 'Bots Connectés',
+                        data: activityData.connected,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Messages',
+                        data: activityData.messages,
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateRecentUsers(users) {
+            const container = document.getElementById('recentUsers');
+            container.innerHTML = users.map(user => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                            ${user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-semibold">${user.username}</p>
+                            <p class="text-sm text-gray-500">${user.plan}</p>
+                        </div>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded-full ${user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                        ${user.status}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function updateSessionsTable(sessions) {
+            const tbody = document.getElementById('sessionsTable');
+            tbody.innerHTML = sessions.map(session => `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="text-sm font-medium text-gray-900">${session.userId}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${session.isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${session.isConnected ? 'Connecté' : 'Déconnecté'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${session.uptime} min
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${session.messagesSent}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button onclick="manageSession('${session.userId}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <button onclick="forceLogout('${session.userId}')" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-power-off"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function forceLogout(userId) {
+            if (confirm(`Forcer la déconnexion de ${userId} ?`)) {
+                await fetch(`/admin/sessions/${userId}/force-logout`, { method: 'POST' });
+                loadDashboard();
+            }
+        }
+
+        // Rafraîchissement automatique
+        setInterval(loadDashboard, 10000);
+        loadDashboard();
+    </script>
+</body>
+</html>
